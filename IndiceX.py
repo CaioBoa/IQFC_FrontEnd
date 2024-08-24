@@ -1,40 +1,17 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import yfinance as yf
+from utils import *
+
+def obter_dados_b3(ticker):
+    return yf.download(ticker, period="2y")
 
 def app():
     tickers = {"BBAS3.SA": 0.3, "PETR4.SA": 0.5, "EZTC3.SA": 0.2}
 
-    # Funções para cálculos de métricas
-    def calcular_retorno_acumulado(df):
-        return (df['Close'].iloc[-1] / df['Close'].iloc[0]) - 1
-
-    def calcular_retorno_12_meses(df):
-        if len(df) >= 252:
-            return (df['Close'].iloc[-1] / df['Close'].iloc[-252]) - 1
-        else:
-            print("Não há dados suficientes para calcular o retorno dos últimos 12 meses.")
-            return np.nan 
-
-    def calcular_volatilidade(df):
-        return np.std(df['Close'].pct_change()) * np.sqrt(252)
-
-    def calcular_indice_sharpe(df, risk_free_rate=0.0):
-        retorno = df['Close'].pct_change().mean() * 252
-        volatilidade = calcular_volatilidade(df)
-        return (retorno - risk_free_rate) / volatilidade
-
-    # Placeholder para a API da B3
-    def obter_dados_b3(ticker):
-        # Substitua este trecho pelo código de integração com a API da B3
-        return yf.download(ticker, period="2y")
-
-    # Interface do Streamlit
     st.title("Índice Teste")
-    st.write("Este é um índice de teste com 3 ativos: BBAS3, PETR4 e EZTC3.")
+    st.write("Este é um índice de teste com 3 ativos: BBAS3, PETR4 e EZTC.")
 
-    # Obter dados para cada ticker e criar um DataFrame com os dados normalizados
     indice_data = pd.DataFrame()
     for ticker, weight in tickers.items():
         data = obter_dados_b3(ticker)
@@ -43,57 +20,87 @@ def app():
             continue
         indice_data[ticker] = data['Close'] / data['Close'].iloc[0] * 100 * weight
 
-    # Somar os valores ponderados para criar o índice personalizado
     indice_data['Close'] = indice_data.sum(axis=1)
 
-    # Obter dados do benchmark (Ibovespa)
     benchmark_data = obter_dados_b3("^BVSP")
     benchmark_data['Benchmark'] = benchmark_data['Close'] / benchmark_data['Close'].iloc[0] * 100
 
-    # Combinar os dados do índice personalizado e do benchmark
     combined_data = pd.DataFrame({
         'Índice': indice_data['Close'],
         'Benchmark': benchmark_data['Benchmark']
     })
 
-    # Exibir o gráfico de performance com `st.line_chart`
     st.subheader("Gráfico de Performance Normalizado")
     st.line_chart(combined_data)
 
-    # Métricas importantes
     st.subheader("Métricas Importantes")
     retorno_acumulado = calcular_retorno_acumulado(indice_data)
     retorno_12_meses = calcular_retorno_12_meses(indice_data)
     volatilidade = calcular_volatilidade(indice_data)
     indice_sharpe = calcular_indice_sharpe(indice_data)
+    
+    # Cálculos adicionais para o benchmark
+    retorno_acumulado_benchmark = calcular_retorno_acumulado(benchmark_data)
+    retorno_12_meses_benchmark = calcular_retorno_12_meses(benchmark_data)
+    volatilidade_benchmark = calcular_volatilidade(benchmark_data)
+    sharpe_ratio_benchmark = calcular_indice_sharpe(benchmark_data)
 
-    # Usar colunas para um layout melhorado
+    # Cálculos dos índices utilizando as funções implementadas
+    sortino_ratio = calcular_sortino_ratio(indice_data)  # Calcular o Sortino Ratio para o índice
+    sortino_ratio_benchmark = calcular_sortino_ratio(benchmark_data)  # Calcular o Sortino Ratio para o benchmark
+
+    information_ratio = calcular_information_ratio(indice_data, benchmark_data)  # Calcular o Information Ratio para o índice em relação ao benchmark
+
+    omega_ratio = calcular_omega_ratio(indice_data)  # Calcular o Omega Ratio para o índice
+    omega_ratio_benchmark = calcular_omega_ratio(benchmark_data)  # Calcular o Omega Ratio para o benchmark
+
+    beta = calcular_beta(indice_data, benchmark_data)  # Calcular o Beta para o índice em relação ao benchmark
+
+    pior_drawdown = calcular_pior_drawdown(indice_data)  # Calcular o Pior Drawdown para o índice
+    pior_drawdown_benchmark = calcular_pior_drawdown(benchmark_data)  # Calcular o Pior Drawdown para o benchmark
+
+    tempo_medio_recuperacao = calcular_tempo_medio_recuperacao(indice_data)  # Calcular o Tempo Médio de Recuperação para o índice
+
+    
     col1, col2, col3, col4 = st.columns(4)
 
-    # Estilizando as métricas com HTML e CSS
     st.markdown("""
     <style>
     .metric-container {
+        display: flex;
+        flex-direction: column; /* Alinha os filhos na vertical */
+        justify-content: space-between; /* Espaça igualmente os elementos */
+        align-items: center; /* Centraliza os elementos horizontalmente */
         text-align: center;
-        padding: 20px;
+        padding: 15px;
         background-color: #2a2d47;
         border-radius: 10px;
         box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+        /* Para telas maiores, não definimos min-height */
     }
     .metric-header {
-        font-size: 24px;
+        font-size: 18px;
         font-weight: bold;
         color: #d8d5ee;
+        align-self: center; /* Centraliza o header verticalmente */
     }
     .metric-value {
-        font-size: 32px;
+        font-size: 28px;
         font-weight: bold;
         color: #20ba80;
+        align-self: center; /* Centraliza o value verticalmente */
+    }
+
+    /* Estilos específicos para telas menores */
+    @media (max-width: 768px) {
+        .metric-container {
+            min-height: 9rem; /* Define min-height para telas menores */
+        }
     }
     </style>
+
     """, unsafe_allow_html=True)
 
-    # Exibindo cada métrica em uma coluna com design melhorado
     with col1:
         st.markdown(f"""
         <div class="metric-container">
@@ -126,47 +133,60 @@ def app():
         </div>
         """, unsafe_allow_html=True)
 
-    # Função para criar uma barra visual com emojis
-    def criar_barra(porcentagem, total=1, length=20):
-        barra = "█" * int(length * porcentagem / total)
-        return barra
-
-    # Adicionando a coluna de barras
+    # Dados da composição da carteira
     tickers_df = pd.DataFrame(list(tickers.items()), columns=["Ticker", "Porcentagem"])
-    tickers_df['Gráfico de Porcentagem'] = tickers_df['Porcentagem'].apply(lambda x: criar_barra(x))
+    tickers_df['Barra de Porcentagem'] = tickers_df['Porcentagem'].apply(lambda x: criar_barra(x))
 
-    # Exibindo a tabela no Streamlit
     st.subheader("Composição da Carteira")
-    st.table(tickers_df)
+
+    # Centralizando a tabela e ajustando o width
+    st.markdown(
+        """
+        <style>
+        .stDataFrame {margin-left: auto; margin-right: auto;}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.data_editor(
+        tickers_df,
+        hide_index=True,
+        column_config={
+            "Ticker": "Ticker",
+            "Porcentagem": "Porcentagem",
+            "Gráfico de Porcentagem": "Gráfico de Porcentagem"
+        },
+        width=800  # Ajusta o width da tabela
+    )
 
 
-    # Filtrar os últimos 12 meses
-    indice_data = indice_data.last("12M")
-    benchmark_data = benchmark_data.last("12M")
+    # Adicionando a Tabela de Métricas
+    st.subheader("Tabela de Métricas Comparativa")
 
-    # Calcular os retornos mensais
-    indice_data['Retorno'] = indice_data['Close'].pct_change()
-    benchmark_data['Retorno'] = benchmark_data['Benchmark'].pct_change()
-
-    # Resample para obter os retornos mensais
-    retornos_mensais_indice = indice_data['Retorno'].resample('M').agg(lambda x: (1 + x).prod() - 1).dropna()
-    retornos_mensais_benchmark = benchmark_data['Retorno'].resample('M').agg(lambda x: (1 + x).prod() - 1).dropna()
-
-    # Criar uma tabela com 3 linhas (Índice, Benchmark, Diferença) e 12 colunas (meses)
-    retornos_mensais = pd.DataFrame({
-        'Mês': retornos_mensais_indice.index.strftime('%b-%Y'),
-        'Índice': retornos_mensais_indice.values,
-        'Benchmark': retornos_mensais_benchmark.values,
+    metricas_df = pd.DataFrame({
+        'Métrica': ['Retorno Acumulado', 'Retorno 12 meses', 'Volatilidade', 'Beta', 'Pior Drawdown', 'Tempo médio de recuperação (dias)', 'Sharpe Ratio', 'Sortino Ratio', 'Information Ratio', 'Omega Ratio'],
+        'Índice': [f"{retorno_acumulado:.2%}", f"{retorno_12_meses:.2%}", f"{volatilidade:.2%}", beta, f"{pior_drawdown:.2%}", tempo_medio_recuperacao, f"{indice_sharpe:.2f}", f"{sortino_ratio:.2f}", f"{information_ratio:.2f}", f"{omega_ratio:.2f}"],
+        'Benchmark': [f"{retorno_acumulado_benchmark:.2%}", f"{retorno_12_meses_benchmark:.2%}", f"{volatilidade_benchmark:.2%}", 'N/A', f"{pior_drawdown_benchmark:.2%}", 'N/A', f"{sharpe_ratio_benchmark:.2f}", f"{sortino_ratio_benchmark:.2f}", 'N/A', f"{omega_ratio_benchmark:.2f}"]
     })
 
-    retornos_mensais['Diferença'] = retornos_mensais['Índice'] - retornos_mensais['Benchmark']
+    # Centralizando a tabela e ajustando o width
+    st.markdown(
+        """
+        <style>
+        .stDataFrame {margin-left: auto; margin-right: auto;}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
-    # Transpor a tabela para ter os meses como colunas e as categorias como linhas
-    retornos_mensais = retornos_mensais.set_index('Mês').transpose()
-
-    # Formatando os valores como porcentagem
-    retornos_mensais_formatted = retornos_mensais.applymap(lambda x: f"{x:.2%}")
-
-    # Exibir a tabela de retornos mensais comparando índice e benchmark
-    st.subheader("Tabela de Retornos Mensais x Benchmark")
-    st.table(retornos_mensais_formatted)
+    st.data_editor(
+        metricas_df,
+        hide_index=True,
+        column_config={
+            "Métrica": "Métrica",
+            "Índice": "Índice",
+            "Benchmark": "Benchmark"
+        },
+        width=800  # Ajusta o width da tabela
+    )
