@@ -38,7 +38,7 @@ def app():
     retorno_12_meses = calcular_retorno_12_meses(indice_data)
     volatilidade = calcular_volatilidade(indice_data)
     indice_sharpe = calcular_indice_sharpe(indice_data)
-
+    
     # Cálculos adicionais para o benchmark
     retorno_acumulado_benchmark = calcular_retorno_acumulado(benchmark_data)
     retorno_12_meses_benchmark = calcular_retorno_12_meses(benchmark_data)
@@ -46,21 +46,20 @@ def app():
     sharpe_ratio_benchmark = calcular_indice_sharpe(benchmark_data)
 
     # Cálculos dos índices utilizando as funções implementadas
-    sortino_ratio = calcular_sortino_ratio(indice_data)  # Calcular o Sortino Ratio para o índice
-    sortino_ratio_benchmark = calcular_sortino_ratio(benchmark_data)  # Calcular o Sortino Ratio para o benchmark
+    sortino_ratio = calcular_sortino_ratio(indice_data)
+    sortino_ratio_benchmark = calcular_sortino_ratio(benchmark_data)
 
-    information_ratio = calcular_information_ratio(indice_data, benchmark_data)  # Calcular o Information Ratio para o índice em relação ao benchmark
+    information_ratio = calcular_information_ratio(indice_data, benchmark_data)
 
-    omega_ratio = calcular_omega_ratio(indice_data)  # Calcular o Omega Ratio para o índice
-    omega_ratio_benchmark = calcular_omega_ratio(benchmark_data)  # Calcular o Omega Ratio para o benchmark
+    omega_ratio = calcular_omega_ratio(indice_data)
+    omega_ratio_benchmark = calcular_omega_ratio(benchmark_data)
 
-    beta = calcular_beta(indice_data, benchmark_data)  # Calcular o Beta para o índice em relação ao benchmark
+    beta = calcular_beta(indice_data, benchmark_data)
 
-    pior_drawdown = calcular_pior_drawdown(indice_data)  # Calcular o Pior Drawdown para o índice
-    pior_drawdown_benchmark = calcular_pior_drawdown(benchmark_data)  # Calcular o Pior Drawdown para o benchmark
+    pior_drawdown = calcular_pior_drawdown(indice_data)
+    pior_drawdown_benchmark = calcular_pior_drawdown(benchmark_data)
 
-    tempo_medio_recuperacao = calcular_tempo_medio_recuperacao(indice_data)  # Calcular o Tempo Médio de Recuperação para o índice
-
+    tempo_medio_recuperacao = calcular_tempo_medio_recuperacao(indice_data)
 
     col1, col2, col3, col4 = st.columns(4)
 
@@ -68,37 +67,34 @@ def app():
     <style>
     .metric-container {
         display: flex;
-        flex-direction: column; /* Alinha os filhos na vertical */
-        justify-content: space-between; /* Espaça igualmente os elementos */
-        align-items: center; /* Centraliza os elementos horizontalmente */
+        flex-direction: column;
+        justify-content: space-between;
+        align-items: center;
         text-align: center;
         padding: 15px;
         background-color: #2a2d47;
         border-radius: 10px;
         box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
-        /* Para telas maiores, não definimos min-height */
     }
     .metric-header {
         font-size: 18px;
         font-weight: bold;
         color: #d8d5ee;
-        align-self: center; /* Centraliza o header verticalmente */
+        align-self: center;
     }
     .metric-value {
         font-size: 28px;
         font-weight: bold;
         color: #20ba80;
-        align-self: center; /* Centraliza o value verticalmente */
+        align-self: center;
     }
 
-    /* Estilos específicos para telas menores */
     @media (max-width: 768px) {
         .metric-container {
-            min-height: 9rem; /* Define min-height para telas menores */
+            min-height: 9rem;
         }
     }
     </style>
-
     """, unsafe_allow_html=True)
 
     with col1:
@@ -128,7 +124,7 @@ def app():
     with col4:
         st.markdown(f"""
         <div class="metric-container">
-            <div class="metric-header">Índice de Sharpe</div>
+            <div class="metric-header">Índice Sharpe</div>
             <div class="metric-value">{indice_sharpe:.2f}</div>
         </div>
         """, unsafe_allow_html=True)
@@ -139,7 +135,6 @@ def app():
 
     st.subheader("Composição da Carteira")
 
-    # Centralizando a tabela e ajustando o width
     st.markdown(
         """
         <style>
@@ -155,11 +150,10 @@ def app():
         column_config={
             "Ticker": "Ticker",
             "Porcentagem": "Porcentagem",
-            "Gráfico de Porcentagem": "Gráfico de Porcentagem"
+            "Barra de Porcentagem": "Barra de Porcentagem"
         },
-        width=800  # Ajusta o width da tabela
+        width=800
     )
-
 
     # Adicionando a Tabela de Métricas
     st.subheader("Tabela de Métricas Comparativa")
@@ -170,7 +164,6 @@ def app():
         'Benchmark': [f"{retorno_acumulado_benchmark:.2%}", f"{retorno_12_meses_benchmark:.2%}", f"{volatilidade_benchmark:.2%}", 'N/A', f"{pior_drawdown_benchmark:.2%}", 'N/A', f"{sharpe_ratio_benchmark:.2f}", f"{sortino_ratio_benchmark:.2f}", 'N/A', f"{omega_ratio_benchmark:.2f}"]
     })
 
-    # Centralizando a tabela e ajustando o width
     st.markdown(
         """
         <style>
@@ -188,5 +181,36 @@ def app():
             "Índice": "Índice",
             "Benchmark": "Benchmark"
         },
-        width=800  # Ajusta o width da tabela
+        width=800
+    )
+
+    # Calcular retornos mensais para o índice e o benchmark
+    indice_data['Retorno Mensal'] = indice_data['Close'].pct_change().resample('M').apply(lambda x: (1 + x).prod() - 1)
+    benchmark_data['Retorno Mensal'] = benchmark_data['Benchmark'].pct_change().resample('M').apply(lambda x: (1 + x).prod() - 1)
+
+    # Criar DataFrame para tabela de retornos mensais
+    retornos_mensais_df = pd.DataFrame({
+        'Mês': indice_data['Retorno Mensal'].index.strftime('%b-%Y'),
+        'Índice': indice_data['Retorno Mensal'].values,
+        'Benchmark': benchmark_data['Retorno Mensal'].values
+    })
+
+    # Remover linhas com NaN (caso existam meses sem dados completos)
+    retornos_mensais_df.dropna(inplace=True)
+
+    # Calcular a diferença entre os retornos mensais do índice e do benchmark
+    retornos_mensais_df['Diferença'] = retornos_mensais_df['Índice'] - retornos_mensais_df['Benchmark']
+
+    # Exibir a tabela de retornos mensais no Streamlit
+    st.subheader("Tabela de Retornos Mensais x Benchmark")
+    st.data_editor(
+        retornos_mensais_df,
+        hide_index=True,
+        column_config={
+            "Mês": "Mês",
+            "Índice": "Índice",
+            "Benchmark": "Benchmark",
+            "Diferença": "Diferença"
+        },
+        width=800
     )
